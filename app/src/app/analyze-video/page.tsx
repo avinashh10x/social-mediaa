@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Config, Video as VideoRecord } from "@/lib/types";
+import { useManualVideo } from "@/context/manual-video-context";
 
 const MAX_ITEMS = 5;
 
@@ -64,11 +65,10 @@ export default function AnalyzeVideoPage() {
   const [selectedConfig, setSelectedConfig] = useState("");
   const [items, setItems] = useState<AnalysisItem[]>([]);
   const [urlInput, setUrlInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [progress, setProgress] = useState<BatchProgress | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { running: loading, progress, runAnalysis } = useManualVideo();
 
   useEffect(() => {
     fetch("/api/configs")
@@ -128,71 +128,18 @@ export default function AnalyzeVideoPage() {
 
   async function handleSubmit() {
     if (!selectedConfig || items.length === 0) return;
-    setLoading(true);
-    setError("");
-    setProgress(null);
+    runAnalysis(selectedConfig, items);
+  }
 
-    const formData = new FormData();
-    formData.set("configName", selectedConfig);
-    formData.set("count", String(items.length));
-
-    items.forEach((item, i) => {
-      formData.set(`type_${i}`, item.type);
-      formData.set(`label_${i}`, item.label);
-      if (item.type === "file" && item.file) {
-        formData.set(`file_${i}`, item.file);
-      } else if (item.type === "url" && item.url) {
-        formData.set(`url_${i}`, item.url);
-      }
-    });
-
-    try {
-      const response = await fetch("/api/analyze-video", {
-        method: "POST",
-        body: formData,
-      });
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let finalProgress: BatchProgress | null = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = JSON.parse(line.slice(6)) as BatchProgress;
-          finalProgress = data;
-          setProgress(data);
-        }
-      }
-
-      if (
-        finalProgress?.status === "error" &&
-        finalProgress.videos.length === 0
-      ) {
-        throw new Error(finalProgress.errors[0] || "All analyses failed");
-      }
-
-      // Clear items on success
+  // Clear items if successfully completed
+  useEffect(() => {
+    if (progress?.status === "completed") {
       items.forEach((item) => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       });
       setItems([]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
-    } finally {
-      setLoading(false);
     }
-  }
+  }, [progress?.status]);
 
   const canAdd = items.length < MAX_ITEMS;
 
@@ -249,7 +196,7 @@ export default function AnalyzeVideoPage() {
                 <div className="relative h-12 w-9 shrink-0 rounded-lg overflow-hidden bg-white/[0.02]">
                   {item.type === "file" && item.previewUrl ? (
                     <video
-                      src={item.previewUrl}
+                      src={`${item.previewUrl}#t=0.001`}
                       className="h-full w-full object-cover"
                       muted
                       preload="metadata"
@@ -383,11 +330,7 @@ export default function AnalyzeVideoPage() {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-xl bg-red-500/5 border border-red-500/10 p-4 text-sm text-red-400">
-          {error}
-        </div>
-      )}
+
 
       {/* Batch progress — pipeline-style */}
       {progress && (

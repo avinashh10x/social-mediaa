@@ -333,7 +333,7 @@ function VideosContent() {
                   {/* Video fallback — shown when no thumbnail or img fails */}
                   {video.link && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(video.link) ? (
                     <video
-                      src={video.link}
+                      src={`${video.link}#t=0.001`}
                       className="absolute inset-0 h-full w-full object-cover"
                       style={{ display: video.thumbnail ? "none" : "block" }}
                       muted
