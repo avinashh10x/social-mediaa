@@ -456,14 +456,14 @@ function VideosContent() {
           if (!open) setModalVideo(null);
         }}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl border-white/[0.08] p-0 gap-0 bg-white">
+        <DialogContent className="w-[45vw] max-w-7xl sm:max-w-7xl max-h-[90vh] overflow-hidden rounded-2xl border-white/[0.08] p-0 gap-0">
           <DialogTitle className="sr-only">
             {modalSection === "analysis" ? "Video Analysis" : "New Concepts"}
           </DialogTitle>
           {modalVideo && (
             <>
               {/* Modal header */}
-              <div className="flex items-center gap-4 p-5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-4 p-5  border-b border-white/[0.06]">
                 {/* Mini thumbnail */}
                 <div className="relative h-16 w-12 shrink-0 rounded-lg overflow-hidden bg-white/[0.02]">
                   {modalVideo.thumbnail ? (
